@@ -1,35 +1,39 @@
-package com.udacity.gradle.builditbigger;
+package com.udacity.gradle.builditbigger.managers;
 
+import android.app.Activity;
 import android.app.ProgressDialog;
-import android.content.Intent;
+import android.content.Context;
 import android.os.AsyncTask;
-import android.os.Bundle;
-import android.support.v7.app.AppCompatActivity;
-import android.view.View;
 
-import com.androidtalks.androidjokeslibrary.JokeActivity;
 import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.extensions.android.json.AndroidJsonFactory;
 import com.google.api.client.googleapis.services.AbstractGoogleClientRequest;
 import com.google.api.client.googleapis.services.GoogleClientRequestInitializer;
 import com.leonelmendez.jokes.backend.myApi.MyApi;
+import com.udacity.gradle.builditbigger.R;
 
 import java.io.IOException;
 
-public class MainActivity extends AppCompatActivity {
+/**
+ * Created by leonelmendez on 09/07/15.
+ */
+public class AsyncJokeManager {
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main
-        );
+    private Context mContext;
+    private AsyncJokeDownloadListener mAsyncJokeDownloadListener;
+    private boolean isProgressDialogActivated = false;
+
+    public AsyncJokeManager(Context context){
+        this.mContext = context;
     }
 
-    public void tellJoke(View view){
-        JokeAsyncTask  jokeAsyncTask = new JokeAsyncTask();
+    public void showProgressDialog(boolean activateProgressDialog){
+        this.isProgressDialogActivated = activateProgressDialog;
+    }
+    public void downloadRandomJoke(){
+        JokeAsyncTask jokeAsyncTask = new JokeAsyncTask();
         jokeAsyncTask.execute();
     }
-
 
     private class JokeAsyncTask extends AsyncTask<Void,Void,String> {
 
@@ -37,15 +41,17 @@ public class MainActivity extends AppCompatActivity {
         private ProgressDialog progressDialog;
 
         public JokeAsyncTask(){
-            progressDialog = new ProgressDialog(MainActivity.this);
+            progressDialog = new ProgressDialog(mContext);
         }
 
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
+            if(isProgressDialogActivated){
             progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
-            progressDialog.setMessage(getString(R.string.message_downloading_joke));
+            progressDialog.setMessage(mContext.getString(R.string.message_downloading_joke));
             progressDialog.show();
+            }
         }
 
         @Override
@@ -53,7 +59,7 @@ public class MainActivity extends AppCompatActivity {
             if(mService == null) {
                 MyApi.Builder builder = new MyApi.Builder(AndroidHttp.newCompatibleTransport()
                         , new AndroidJsonFactory(), null)
-                        .setRootUrl("http://10.0.2.2:8080/_ah/api/")
+                        .setRootUrl("https://1-dot-androidandtalks.appspot.com/_ah/api/")
                         .setGoogleClientRequestInitializer(new GoogleClientRequestInitializer() {
                             @Override
                             public void initialize(AbstractGoogleClientRequest<?> abstractGoogleClientRequest) throws IOException {
@@ -67,7 +73,8 @@ public class MainActivity extends AppCompatActivity {
             try {
                 return mService.randomJoke().execute().getData();
             } catch (IOException e) {
-                return e.getMessage();
+                e.printStackTrace();
+                return "";
             }
 
         }
@@ -75,9 +82,18 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(String s) {
             super.onPostExecute(s);
-            progressDialog.dismiss();
-            Intent jokeLibraryIntent = JokeActivity.createIntent(MainActivity.this, s);
-            startActivity(jokeLibraryIntent);
+            if(isProgressDialogActivated)
+                progressDialog.dismiss();
+            mAsyncJokeDownloadListener.onAsyncJokeDownloadCompleted(s);
         }
     }
+
+    public void setAsyncJokeDownloadListener(AsyncJokeDownloadListener mAsyncJokeDownloadListener) {
+        this.mAsyncJokeDownloadListener = mAsyncJokeDownloadListener;
+    }
+
+    public interface AsyncJokeDownloadListener {
+        void onAsyncJokeDownloadCompleted(String joke);
+    }
+
 }
