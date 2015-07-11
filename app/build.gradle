@@ -28,9 +28,7 @@ android {
         }
     }
 
-    task globalTest(type:Test){
-        
-    }
+
 }
 
 dependencies {
@@ -42,3 +40,4 @@ dependencies {
     compile project(path: ':backend', configuration: 'android-endpoints')
 
 }
+
